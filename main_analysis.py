@@ -11,26 +11,23 @@ def run_size_scaling(sizes, seed=42, outdir="outputs", warmup=True):
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
 
-    aggregated = {}
+    aggregated = {} # store results across all dataset sizes and grouped by the model
 
     for size in sizes:
         print(f"Running benchmark for n_prok=n_euk={size}...")
 
+        #generate the synthetic datasdet with equal prok and euk examples
         dataset = generate_dataset(n_prokaryote=size, n_eukaryote=size, seed=seed)
 
         prok = [ex for ex in dataset if ex.organism_type == "prokaryote"]
         euk = [ex for ex in dataset if ex.organism_type == "eukaryote"]
 
-        prok_results = benchmark_all_models(
-            prok,
-            warmup=warmup,
-        )
-        euk_results = benchmark_all_models(
-            euk,
-            warmup=warmup,
-        )
-        
 
+        # run benchmarking on each of the subsedts
+        prok_results = benchmark_all_models(prok,warmup=warmup)
+        euk_results = benchmark_all_models(euk,warmup=warmup)
+        
+        # initlaizie strucutre on first iteration of resuluts
         if not aggregated:
             for r in prok_results:
                 aggregated[r["model_name"]] = {
@@ -40,7 +37,7 @@ def run_size_scaling(sizes, seed=42, outdir="outputs", warmup=True):
                     "prok_total_runtime_seconds": [],
                     "euk_total_runtime_seconds": [],
                 }
-
+        # colelct the results
         for pr, er in zip(prok_results, euk_results):
             m = aggregated[pr["model_name"]]
             total_examples = len(prok) + len(euk)
@@ -105,35 +102,30 @@ def run_size_scaling(sizes, seed=42, outdir="outputs", warmup=True):
 
 
 def run(n_prokaryote=250, n_eukaryote=250, seed=42, outdir="outputs", warmup=True):
+   #generate a full dataset
     dataset = generate_dataset(
         n_prokaryote=n_prokaryote,
         n_eukaryote=n_eukaryote,
         seed=seed,
     )
 
+    #split for comparison
     prok = [ex for ex in dataset if ex.organism_type == "prokaryote"]
     euk = [ex for ex in dataset if ex.organism_type == "eukaryote"]
 
-    prok_results = benchmark_all_models(
-        prok,
-        warmup=warmup,
-    )
-    euk_results = benchmark_all_models(
-        euk,
-        warmup=warmup,
-    )
+    #benchmark separately
+    prok_results = benchmark_all_models( prok, warmup=warmup)
+    euk_results = benchmark_all_models(euk, warmup=warmup)
 
-    results = benchmark_all_models(
-        dataset,
-        warmup=warmup,
-    )
+    #benchmark together
+    results = benchmark_all_models(dataset,warmup=warmup)
     print_results_table(results)
 
     output_dir = Path(outdir)
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save only CSV, not generic plots
+    # save csv data
     save_results_csv(results, output_dir / "benchmark_results.csv")
 
     print(f"\nSaved benchmark table to: {output_dir / 'benchmark_results.csv'}")
@@ -143,7 +135,7 @@ def run(n_prokaryote=250, n_eukaryote=250, seed=42, outdir="outputs", warmup=Tru
     x = range(len(model_names))
     width = 0.35
 
-    # ---- coding accuracy grouped bars ----
+    # ---- coding accuracy grouped bar plots ----
     prok_acc = [r["coding_accuracy"] for r in prok_results]
     euk_acc = [r["coding_accuracy"] for r in euk_results]
 
@@ -175,7 +167,7 @@ def run(n_prokaryote=250, n_eukaryote=250, seed=42, outdir="outputs", warmup=Tru
     plt.savefig(plot_dir / "prok_vs_euk_runtime.png", dpi=200)
     plt.close()
 
-    # ---- sensitivity grouped bars ----
+    # ---- sensitivity grouped bar plots ----
     prok_sens = [r["coding_sensitivity"] for r in prok_results]
     euk_sens = [r["coding_sensitivity"] for r in euk_results]
 
@@ -190,7 +182,7 @@ def run(n_prokaryote=250, n_eukaryote=250, seed=42, outdir="outputs", warmup=Tru
     plt.savefig(plot_dir / "prok_vs_euk_coding_sensitivity.png", dpi=200)
     plt.close()
 
-    # ---- specificity grouped bars ----
+    # ---- specificity  ----
     prok_spec = [r["coding_specificity"] for r in prok_results]
     euk_spec = [r["coding_specificity"] for r in euk_results]
 
@@ -205,7 +197,7 @@ def run(n_prokaryote=250, n_eukaryote=250, seed=42, outdir="outputs", warmup=Tru
     plt.savefig(plot_dir / "prok_vs_euk_coding_specificity.png", dpi=200)
     plt.close()
 
-    # ---- Combined eukaryote structural benchmark plot ----
+    # ---- eukaryote structural benchmark plot ----
     metrics_to_plot = {
         "Start recall": [r["start_recall"] for r in euk_results],
         "Stop recall": [r["stop_recall"] for r in euk_results],
@@ -238,6 +230,7 @@ def run(n_prokaryote=250, n_eukaryote=250, seed=42, outdir="outputs", warmup=Tru
     plt.savefig(plot_dir / "euk_structural_benchmarks.png", dpi=200)
     plt.close()
 
+    # show example of synthetic sequences as a sanity check
     print("\nExample synthetic sequences:\n")
     for i, ex in enumerate(dataset[:2], start=1):
         print(to_fasta(ex, header=f"synthetic_{i}_{ex.organism_type}").strip())
@@ -251,6 +244,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run HMM benchmarking on synthetic data")
 
+    # debugging arguemnts
     parser.add_argument("--n-prok", type=int, default=250, help="number of prokaryote examples")
     parser.add_argument("--n-euk", type=int, default=250, help="number of eukaryote examples")
     parser.add_argument("--seed", type=int, default=42, help="random seed")

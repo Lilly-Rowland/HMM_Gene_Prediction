@@ -3,8 +3,9 @@ from matplotlib.patches import Circle, FancyArrowPatch
 from matplotlib import patheffects
 import numpy as np
 
+#draws a circular node with a label = hmm states
 def draw_node(ax, xy, label, radius=0.34, fontsize=10, lw=1.6):
-    circ = Circle(
+    circ = Circle( # circle for the node
         xy,
         radius=radius,
         facecolor="white",
@@ -13,7 +14,7 @@ def draw_node(ax, xy, label, radius=0.34, fontsize=10, lw=1.6):
     )
     ax.add_patch(circ)
 
-    txt = ax.text(
+    txt = ax.text( #centered text
         xy[0], xy[1], label,
         ha="center", va="center",
         fontsize=fontsize
@@ -22,7 +23,7 @@ def draw_node(ax, xy, label, radius=0.34, fontsize=10, lw=1.6):
         patheffects.withStroke(linewidth=3, foreground="white")
     ])
 
-
+# start and end points for arrowss
 def edge_points(p1, p2, r):
     p1 = np.array(p1, dtype=float)
     p2 = np.array(p2, dtype=float)
@@ -35,7 +36,7 @@ def edge_points(p1, p2, r):
     u = v / d
     return p1 + u * r, p2 - u * r
 
-
+# drawing arrow betweeen two nodes with curve option and label
 def draw_arrow(
     ax,
     p1,
@@ -78,7 +79,7 @@ def draw_arrow(
             patheffects.withStroke(linewidth=3, foreground="white")
         ])
 
-
+# deraw a loop to self node with label
 def draw_self_loop(ax, p, label=None, direction="up", r=0.34, lw=1.2):
     x, y = p
 
@@ -119,6 +120,7 @@ def draw_self_loop(ax, p, label=None, direction="up", r=0.34, lw=1.2):
             patheffects.withStroke(linewidth=3, foreground="white")
         ])
 
+#add box to show annotated emissions
 def add_emission_note(ax, x, y, text):
     ax.text(
         x, y, text,
@@ -127,7 +129,7 @@ def add_emission_note(ax, x, y, text):
         bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="black", lw=0.8)
     )
 
-
+#byilds 2*2 grid of HMMS
 def make_hmm_figure(save_prefix="hmm_models_paper_diagram"):
     fig, axes = plt.subplots(2, 2, figsize=(13, 9))
     axes = axes.ravel()
@@ -139,15 +141,15 @@ def make_hmm_figure(save_prefix="hmm_models_paper_diagram"):
     ax.set_title("Model 1: 2-state coding/noncoding", fontsize=12, pad=10)
 
     pos = {"N": (0, 0), "C": (2.1, 0)}
-
+    #draw nodes
     for k, p in pos.items():
         draw_node(ax, p, k)
-
+    #add transitions
     draw_self_loop(ax, pos["N"], "0.96", direction="up")
     draw_self_loop(ax, pos["C"], "0.96", direction="up")
     draw_arrow(ax, pos["N"], pos["C"], "0.04", rad=0.08, label_offset=(0, 0.02))
     draw_arrow(ax, pos["C"], pos["N"], "0.04", rad=0.08, label_offset=(0, -0.05))
-
+    #add emission dewscriotions
     add_emission_note(ax, 0, -1.0, "emit: intergenic")
     add_emission_note(ax, 2.1, -1.0, "emit: coding")
 
@@ -274,21 +276,21 @@ def make_hmm_figure(save_prefix="hmm_models_paper_diagram"):
     draw_arrow(ax, pos["I"], pos["START"], "0.026", rad=0.0, label_offset=(0, 0.02))
     draw_arrow(ax, pos["START"], pos["C1"], "0.395", rad=0.0, label_offset=(0.02, 0.03))
 
-    # vertical codon progression
+    # vertical codons
     draw_arrow(ax, pos["C1"], pos["C2"], "0.985", rad=0.0, label_offset=(-0.38, 0.0))
     draw_arrow(ax, pos["C2"], pos["C3"], "0.995", rad=0.0, label_offset=(-0.38, 0.0))
 
-    # periodic cycle: keep it tight on the right side of the codon stack
+   
     draw_arrow(ax, pos["C3"], pos["C1"], "0.985", rad=-0.55, label_offset=(0.55, 0.0))
 
     # stop transitions
     draw_arrow(ax, pos["C1"], pos["STOP"], "0.011", rad=0.08, label_offset=(0.02, 0.12))
     draw_arrow(ax, pos["C3"], pos["STOP"], "0.011", rad=-0.08, label_offset=(0.02, -0.12))
 
-    # return to intergenic: send it BELOW the whole diagram
+    # return to intergenic and make arrow BELOW the whole diagram
     draw_arrow(ax, pos["STOP"], pos["I"], "0.95", rad=-0.48, label_offset=(0, -0.38))
 
-    # emission notes
+    # emission notess
     add_emission_note(ax, pos["I"][0], -1.75, "intergenic")
     add_emission_note(ax, pos["START"][0], -1.75, "START motif")
     add_emission_note(ax, 4.4, 1.75, "codon pos. 1")
